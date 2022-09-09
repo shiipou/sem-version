@@ -73,7 +73,7 @@ runs:
           channel_version="${BASH_REMATCH[5]}"
         else
           last_version="$(git for-each-ref "refs/tags/*.*.*" --count=1 --sort=-refname --format="%(refname:short)")"; [ $DEBUG ] && echo "last_version=$last_version"
-          if [[ $last_version =~ v([0-9]+)\.([0-9]+)\.([0-9]+))? ]]; then
+          if [[ $last_version =~ v([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
             major_version="${BASH_REMATCH[1]}"
             minor_version="${BASH_REMATCH[2]}"
             patch_version="${BASH_REMATCH[3]}"
