@@ -5,6 +5,7 @@ on:
       - stable
       - beta
       - "*.x"
+      - "*"
 
 jobs:
   release:
@@ -14,12 +15,18 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+        
       - name: Get-Version
         id: get-version
-        uses: shiipou/semantic-release@stable
+        uses: shiipou/semantic-release@feat/first-release
+        with:
+          ALLOW_FAILURE: false
+          DEBUG: true
+          
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: steps.get-version.outputs.WILL_RELEASE == 'true'
         uses: actions/create-release@v1
         with:
           tag_name: v${{ steps.get-version.outputs.VERSION }}
@@ -27,4 +34,4 @@ jobs:
           body: |
             v${{ steps.get-version.outputs.VERSION }}
           draft: false
-          prerelease: v${{ steps.get-version.outputs.IS_PRE_RELEASE }}
+          prerelease: ${{ steps.get-version.outputs.IS_PRE_RELEASE }}
