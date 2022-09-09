@@ -24,11 +24,11 @@ inputs:
     required: false
     default: "^.*!$"
   RELEASE_BRANCHES_REGEX:
-    description: 
+    description: "The regex to find each release branches"
     required: false
     default: '^(main)$'
   PRERELEASE_BRANCHES_REGEX:
-    description: 
+    description: "The regex to find each pre-release branches"
     required: false
     default: '^(rc|beta|hotfix)$'
   DEBUG:
@@ -62,19 +62,23 @@ runs:
         DEBUG: '${{ inputs.DEBUG }}'
       run: |
         set -xe
-        
+
         CI_COMMIT_BRANCH="${GITHUB_REF#refs/heads/}"
-        
+
         # Fetch git tags and commits.
-        git fetch -a >> /dev/null
-        last_version="$(git for-each-ref "refs/tags/*-${CI_COMMIT_BRANCH}.*" --count=1 --sort=-refname --format="%(refname:short)")"; [ $DEBUG ] && echo "last_version=$last_version"
-        
-        diff_path="--all"
+        git fetch >> /dev/null
+        git fetch --all --tags >> /dev/null
+
+        last_version="$(git for-each-ref "refs/tags/*-${CI_COMMIT_BRANCH}.*" --count=1 --sort=-refname --format="%(refname:short)")"
+        [ $DEBUG ] && echo "last_version=$last_version"
+
+        diff_path="${CI_COMMIT_BRANCH}"
         if [ $last_version ]; then
-          diff_path="--ancestry-path '${last_version}..HEAD'"
+          diff_path="${last_version}.."
         fi
-        commit_list="$(git rev-list --oneline $diff_path --format=%s --no-commit-header)"; [ $DEBUG ] && echo "${commit_list}"
-        
+        commit_list="$(git rev-list --oneline $diff_path --format=%s --no-commit-header)"
+        [ $DEBUG ] && echo "${commit_list}"
+
         # extract major/minor/patch and channel verion tag
         if [[ $last_version =~ v([0-9]+)\.([0-9]+)\.([0-9]+)(-${CI_COMMIT_BRANCH}\.([0-9]+))? ]]; then
           major_version="${BASH_REMATCH[1]}"
@@ -154,18 +158,17 @@ runs:
         if [[ ${CI_COMMIT_BRANCH} =~ $RELEASE_BRANCHES_REGEX ]]; then
           next_version="${major_version}.${minor_version}.${patch_version}"
           echo '::set-output name=WILL_RELEASE::true'
-          
+
         # If branch is pre-release branch
         elif [[ ${CI_COMMIT_BRANCH} =~ $PRERELEASE_BRANCHES_REGEX ]]; then
           next_version="${major_version}.${minor_version}.${patch_version}-${CI_COMMIT_BRANCH}.${channel_version}"
           echo '::set-output name=WILL_RELEASE::true'
           echo '::set-output name=IS_PRE_RELEASE::true'
-          
+
         # If branch is other branch
         elif [[ "$ALLOW_FAILURE" == "true" ]]; then
           echo "Will not update the version because current branch (${CI_COMMIT_BRANCH}) is not part of the release branches or pre-release branches."
           exit 3
         fi
-        
+
         echo "::set-output name=VERSION::${next_version}"
-        
