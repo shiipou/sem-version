@@ -72,8 +72,19 @@ runs:
           patch_version="${BASH_REMATCH[3]}"
           channel_version="${BASH_REMATCH[5]}"
         else
-          echo "Last version seems incorrect: $last_version"
-          exit 1
+          last_version="$(git for-each-ref "refs/tags/*.*.*" --count=1 --sort=-refname --format="%(refname:short)")"; [ $DEBUG ] && echo "last_version=$last_version"
+          if [[ $last_version =~ v([0-9]+)\.([0-9]+)\.([0-9]+))? ]]; then
+            major_version="${BASH_REMATCH[1]}"
+            minor_version="${BASH_REMATCH[2]}"
+            patch_version="${BASH_REMATCH[3]}"
+            channel_version="0"
+          else
+            echo "Can't find previous tag. Publish first tag."
+            major_version="0"
+            minor_version="0"
+            patch_version="0"
+            channel_version="0"
+          fi
         fi
 
         correct="false"
@@ -106,7 +117,7 @@ runs:
           fi
         done <<< "$commit_list"
 
-        if [[ "$channel_version" == "" ]]; then
+        if [[ "$channel_version" == "" || "$channel_version" == "0" ]]; then
           if [ "$level" -eq "3" ]; then
             # Increment major version tag
             echo $(( major_version++ )) >> /dev/null
@@ -117,7 +128,8 @@ runs:
             # Increment patch version tag
             echo $(( patch_version++ )) >> /dev/null
           fi
-        else
+        fi
+        if [[ "$channel_version" != "" ]]; then
           # Increment channel version tag
           echo $(( channel_version++ )) >> /dev/null
         fi
