@@ -1,0 +1,137 @@
+name: 'Semantic-Release'
+description: 'GitHub Action to find the next version of your project'
+author: 'shiipou'
+
+inputs:
+  ALLOW_FAILURE:
+    description: 'If set to "true" and this action was run on incorrect state, the action will fail. Else, it just skip.'
+    required: false
+    default: "true"
+  LEVEL_0:
+    description: "The regex to find commit type that won't increment any version tag."
+    required: false
+    default: '^(build|ci|docs|style|refactor|test)$'
+  LEVEL_1:
+    description: "The regex to find commit type that will increment patch version tag."
+    required: false
+    default: '^(fix|perf)$'
+  LEVEL_2:
+    description: "The regex to find commit type that will increment minor version tag."
+    required: false
+    default: '^(feat)$'
+  LEVEL_3:
+    description: "The regex to find commit type that will increment major version tag."
+    required: false
+    default: "^.*!$"
+  RELEASE_BRANCHES_REGEX:
+    description: 
+    required: false
+    default: '^(main)$'
+  PRERELEASE_BRANCHES_REGEX:
+    description: 
+    required: false
+    default: '^(rc|beta|hotfix)$'
+  DEBUG:
+    description: 'If set, will show more info about running action'
+    required: false
+outputs:
+  VERSION:
+    description: 'The next version find by semantic-release'
+    value: ${{ steps.semantic-release.outputs.VERSION }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Semantic-Release
+      id: semantic-release
+      shell: bash
+      env:
+        ALLOW_FAILURE: '${{ inputs.ALLOW_FAILURE }}'
+        LEVEL_0: '${{ inputs.LEVEL_0 }}'
+        LEVEL_1: '${{ inputs.LEVEL_1 }}'
+        LEVEL_2: '${{ inputs.LEVEL_2 }}'
+        LEVEL_3: '${{ inputs.LEVEL_3 }}'
+        RELEASE_BRANCHES_REGEX: '${{ inputs.RELEASE_BRANCHES_REGEX }}'
+        PRERELEASE_BRANCHES_REGEX: '${{ inputs.PRERELEASE_BRANCHES_REGEX }}'
+      run: |
+        # Fetch git tags and commits.
+        git fetch -a >> /dev/null
+        last_version="$(git for-each-ref "refs/tags/*-${{ github.RefName }}.*" --count=1 --sort=-refname --format="%(refname:short)")"; [ $DEBUG ] && echo "last_version=$last_version"
+        commit_list="$(git rev-list --oneline --ancestry-path "${last_version}..HEAD" --format=%s --no-commit-header)"; [ $DEBUG ] && echo "${commit_list}"
+        
+        # extract major/minor/patch and channel verion tag
+        if [[ $last_version =~ v([0-9]+)\.([0-9]+)\.([0-9]+)(-${{ github.RefName }}\.([0-9]+))? ]]; then
+          major_version="${BASH_REMATCH[1]}"
+          minor_version="${BASH_REMATCH[2]}"
+          patch_version="${BASH_REMATCH[3]}"
+          channel_version="${BASH_REMATCH[5]}"
+        else
+          echo "Last version seems incorrect: $last_version"
+          exit 1
+        fi
+
+        correct="false"
+        level=0
+        while IFS= read -r commit; do
+          [ $DEBUG ] && echo "commit=$commit"
+          # Extract the commit type
+          commit_prefix="${commit//:*}"
+          [ $DEBUG ] && echo "commit_prefix=$commit_prefix"
+
+          # Check if commit type is breaking changes
+          if [ "$level" -lt "3" ] && [[ $commit_prefix =~ $LEVEL_2 ]]; then
+            correct="true"
+            level=3
+            [ $DEBUG ] && echo "level=$level"
+          # Check if prefix is in the array of level 2 prefix
+          elif [ "$level" -lt "2" ] && [[ $commit_prefix =~ $LEVEL_2 ]]; then
+            correct="true"
+            level=2
+            [ $DEBUG ] && echo "level=$level"
+          # Check if prefix is in the array of level 1 prefix
+          elif [ "$level" -lt "1" ] && [[ $commit_prefix =~ $LEVEL_1 ]]; then
+            correct="true"
+            level=1
+            [ $DEBUG ] && echo "level=$level"
+          # Check if prefix is in the array of level 0 prefix
+          elif [[ $commit_prefix =~ $LEVEL_0 ]]; then
+            correct="true"
+            [ $DEBUG ] && echo "level=$level"
+          fi
+        done <<< "$commit_list"
+
+        if [[ "$channel_version" == "" ]]; then
+          if [ "$level" -eq "3" ]; then
+            # Increment major version tag
+            echo $(( major_version++ )) >> /dev/null
+          elif [ "$level" -eq "2" ]; then
+            # Increment minor version tagc
+            echo $(( minor_version++ )) >> /dev/null
+          elif [ "$level" == "1" ]; then
+            # Increment patch version tag
+            echo $(( patch_version++ )) >> /dev/null
+          fi
+        else
+          # Increment channel version tag
+          echo $(( channel_version++ )) >> /dev/null
+        fi
+
+        # If prefix is not found, then check ALLOW_FAILURE and fail job when needed.
+        if [[ "$ALLOW_FAILURE" == "true" && "$correct" == "false" ]]; then
+          echo "The commit type '$commit_prefix' didn't exist in the commit message"
+          exit 2
+        fi
+
+        # If branch is release branch
+        if [[ $CI_COMMIT_BRANCH =~ $RELEASE_BRANCHES_REGEX ]]; then
+          next_version="${major_version}.${minor_version}.${patch_version}"
+        # If branch is pre-release branch
+        elif [[ $CI_COMMIT_BRANCH =~ $PRERELEASE_BRANCHES_REGEX ]]; then
+          next_version="${major_version}.${minor_version}.${patch_version}-${{ github.RefName }}.${channel_version}"
+        # If branch is other branch
+        elif [[ "$ALLOW_FAILURE" == "true" ]]; then
+          echo "Will not update the version because current branch (${{ github.RefName }}) is not part of the release branches or pre-release branches."
+          exit 3
+        fi
+
+        echo '::set-output name=VERSION::${next_version}'
