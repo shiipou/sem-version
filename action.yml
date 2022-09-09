@@ -1,0 +1,171 @@
+name: 'Semantic-Release'
+description: 'GitHub Action to find the next version of your project'
+author: 'shiipou'
+
+inputs:
+  ALLOW_FAILURE:
+    description: 'If set to "true" and this action was run on incorrect state, the action will fail. Else, it just skip.'
+    required: false
+    default: "true"
+  LEVEL_0:
+    description: "The regex to find commit type that won't increment any version tag."
+    required: false
+    default: '^(build|ci|docs|style|refactor|test|chore)$'
+  LEVEL_1:
+    description: "The regex to find commit type that will increment patch version tag."
+    required: false
+    default: '^(fix|perf)$'
+  LEVEL_2:
+    description: "The regex to find commit type that will increment minor version tag."
+    required: false
+    default: '^(feat)$'
+  LEVEL_3:
+    description: "The regex to find commit type that will increment major version tag."
+    required: false
+    default: "^.*!$"
+  RELEASE_BRANCHES_REGEX:
+    description: 
+    required: false
+    default: '^(main)$'
+  PRERELEASE_BRANCHES_REGEX:
+    description: 
+    required: false
+    default: '^(rc|beta|hotfix)$'
+  DEBUG:
+    description: 'If set, will show more info about running action'
+    required: false
+outputs:
+  VERSION:
+    description: 'The next version find by semantic-release'
+    value: ${{ steps.semantic-release.outputs.VERSION }}
+  WILL_RELEASE:
+    description: 'Only set to "true" if the release tag will be released'
+    value: ${{ steps.semantic-release.outputs.WILL_RELEASE }}
+  IS_PRE_RELEASE:
+    description: 'Only set to "true" if the release tag will be a pre-release'
+    value: ${{ steps.semantic-release.outputs.IS_PRE_RELEASE }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Semantic-Release
+      id: semantic-release
+      shell: bash
+      env:
+        ALLOW_FAILURE: '${{ inputs.ALLOW_FAILURE }}'
+        LEVEL_0: '${{ inputs.LEVEL_0 }}'
+        LEVEL_1: '${{ inputs.LEVEL_1 }}'
+        LEVEL_2: '${{ inputs.LEVEL_2 }}'
+        LEVEL_3: '${{ inputs.LEVEL_3 }}'
+        RELEASE_BRANCHES_REGEX: '${{ inputs.RELEASE_BRANCHES_REGEX }}'
+        PRERELEASE_BRANCHES_REGEX: '${{ inputs.PRERELEASE_BRANCHES_REGEX }}'
+        DEBUG: '${{ inputs.DEBUG }}'
+      run: |
+        set -xe
+        
+        CI_COMMIT_BRANCH="${GITHUB_REF#refs/heads/}"
+        
+        # Fetch git tags and commits.
+        git fetch -a >> /dev/null
+        last_version="$(git for-each-ref "refs/tags/*-${CI_COMMIT_BRANCH}.*" --count=1 --sort=-refname --format="%(refname:short)")"; [ $DEBUG ] && echo "last_version=$last_version"
+        
+        diff_path="--all"
+        if [ $last_version ]; then
+          diff_path="--ancestry-path '${last_version}..HEAD'"
+        fi
+        commit_list="$(git rev-list --oneline $diff_path --format=%s --no-commit-header)"; [ $DEBUG ] && echo "${commit_list}"
+        
+        # extract major/minor/patch and channel verion tag
+        if [[ $last_version =~ v([0-9]+)\.([0-9]+)\.([0-9]+)(-${CI_COMMIT_BRANCH}\.([0-9]+))? ]]; then
+          major_version="${BASH_REMATCH[1]}"
+          minor_version="${BASH_REMATCH[2]}"
+          patch_version="${BASH_REMATCH[3]}"
+          channel_version="${BASH_REMATCH[5]}"
+        else
+          last_version="$(git for-each-ref "refs/tags/*.*.*" --count=1 --sort=-refname --format="%(refname:short)")"; [ $DEBUG ] && echo "last_version=$last_version"
+          if [[ $last_version =~ v([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
+            major_version="${BASH_REMATCH[1]}"
+            minor_version="${BASH_REMATCH[2]}"
+            patch_version="${BASH_REMATCH[3]}"
+            channel_version="0"
+          else
+            echo "Can't find previous tag. Publish first tag."
+            major_version="0"
+            minor_version="0"
+            patch_version="0"
+            channel_version="0"
+          fi
+        fi
+
+        correct="false"
+        level=0
+        while IFS= read -r commit; do
+          [ $DEBUG ] && echo "commit=$commit"
+          # Extract the commit type
+          commit_prefix="${commit//:*}"
+          [ $DEBUG ] && echo "commit_prefix=$commit_prefix"
+
+          # Check if commit type is breaking changes
+          if [ "$level" -lt "3" ] && [[ $commit_prefix =~ $LEVEL_2 ]]; then
+            correct="true"
+            level=3
+            [ $DEBUG ] && echo "level=$level"
+          # Check if prefix is in the array of level 2 prefix
+          elif [ "$level" -lt "2" ] && [[ $commit_prefix =~ $LEVEL_2 ]]; then
+            correct="true"
+            level=2
+            [ $DEBUG ] && echo "level=$level"
+          # Check if prefix is in the array of level 1 prefix
+          elif [ "$level" -lt "1" ] && [[ $commit_prefix =~ $LEVEL_1 ]]; then
+            correct="true"
+            level=1
+            [ $DEBUG ] && echo "level=$level"
+          # Check if prefix is in the array of level 0 prefix
+          elif [[ $commit_prefix =~ $LEVEL_0 ]]; then
+            correct="true"
+            [ $DEBUG ] && echo "level=$level"
+          fi
+        done <<< "$commit_list"
+
+        if [[ "$channel_version" == "" || "$channel_version" == "0" ]]; then
+          if [ "$level" -eq "3" ]; then
+            # Increment major version tag
+            echo $(( major_version++ )) >> /dev/null
+          elif [ "$level" -eq "2" ]; then
+            # Increment minor version tagc
+            echo $(( minor_version++ )) >> /dev/null
+          elif [ "$level" == "1" ]; then
+            # Increment patch version tag
+            echo $(( patch_version++ )) >> /dev/null
+          fi
+        fi
+        if [[ "$channel_version" != "" ]]; then
+          # Increment channel version tag
+          echo $(( channel_version++ )) >> /dev/null
+        fi
+
+        # If prefix is not found, then check ALLOW_FAILURE and fail job when needed.
+        if [[ "$ALLOW_FAILURE" == "true" && "$correct" == "false" ]]; then
+          echo "The commit type '$commit_prefix' didn't exist in the commit message"
+          exit 2
+        fi
+
+        # If branch is release branch
+        if [[ ${CI_COMMIT_BRANCH} =~ $RELEASE_BRANCHES_REGEX ]]; then
+          next_version="${major_version}.${minor_version}.${patch_version}"
+          echo '::set-output name=WILL_RELEASE::true'
+          
+        # If branch is pre-release branch
+        elif [[ ${CI_COMMIT_BRANCH} =~ $PRERELEASE_BRANCHES_REGEX ]]; then
+          next_version="${major_version}.${minor_version}.${patch_version}-${CI_COMMIT_BRANCH}.${channel_version}"
+          echo '::set-output name=WILL_RELEASE::true'
+          echo '::set-output name=IS_PRE_RELEASE::true'
+          
+        # If branch is other branch
+        elif [[ "$ALLOW_FAILURE" == "true" ]]; then
+          echo "Will not update the version because current branch (${CI_COMMIT_BRANCH}) is not part of the release branches or pre-release branches."
+          exit 3
+        fi
+        
+        echo "::set-output name=VERSION::${next_version}"
+        
