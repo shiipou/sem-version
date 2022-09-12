@@ -89,6 +89,8 @@ runs:
 
         # Fetch git tags and commits.
         git fetch --all --tags >> /dev/null
+        # remove the --depth=1 made by action/checkout@v3
+        git fetch --unshallow >> /dev/null
 
         # find last tag from the current commit sha
         _last_tag_info=$(git describe --tags ${{ github.sha }} || true)
