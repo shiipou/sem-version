@@ -157,7 +157,7 @@ runs:
           exit 2
         fi
 
-# If branch is release branch
+        # If branch is release branch
         if [[ ${CI_COMMIT_BRANCH} =~ $RELEASE_BRANCHES_REGEX ]]; then
           next_version="${major_version}.${minor_version}.${patch_version}"
           if [[ "$last_version" != "v${major_version}.${minor_version}.${patch_version}" ]]; then
