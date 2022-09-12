@@ -21,7 +21,7 @@ jobs:
       with:
         RELEASE_BRANCHES_REGEX: '^(stable)$'
         ALLOW_FAILURE: false
-        DEBUG: true
+        DEBUG: all
 
     - name: Release
       env:

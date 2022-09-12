@@ -82,6 +82,9 @@ runs:
           fi
         }
 
+        if [[ "$DEBUG" == "all" ]]; then set_debug_mode='set -xe'; fi
+        $set_debug_mode
+
         CI_COMMIT_BRANCH="${GITHUB_REF#refs/heads/}"
 
         # Fetch git tags and commits.
@@ -171,7 +174,7 @@ runs:
             echo '::set-output name=WILL_RELEASE::true'
             echo '::set-output name=IS_PRE_RELEASE::true'
           fi
-          
+
         # If branch is other branch
         elif [[ "$ALLOW_FAILURE" == "true" ]]; then
           echo "Will not update the version because current branch (${CI_COMMIT_BRANCH}) is not part of the release branches or pre-release branches."
