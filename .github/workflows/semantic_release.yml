@@ -5,7 +5,7 @@ on:
     - stable
     - beta
     - "*.x"
-    
+
 jobs:
   release:
     name: Release
@@ -17,7 +17,7 @@ jobs:
 
     - name: Get-Version
       id: get-version
-      uses: shiipou/semantic-release@beta
+      uses: ./
       with:
         RELEASE_BRANCHES_REGEX: '^(stable)$'
         ALLOW_FAILURE: false

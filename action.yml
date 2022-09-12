@@ -22,13 +22,13 @@ inputs:
   LEVEL_3:
     description: "The regex to find commit type that will increment major version tag."
     required: false
-    default: "^.*!$"
+    default: "^.+!$"
   RELEASE_BRANCHES_REGEX:
-    description: "The regex to find each release branches"
+    description: "The regex to find the release branch."
     required: false
     default: '^(main)$'
   PRERELEASE_BRANCHES_REGEX:
-    description: "The regex to find each pre-release branches"
+    description: "The regex to find the pre-release branch."
     required: false
     default: '^(rc|beta|hotfix)$'
   DEBUG:
@@ -62,44 +62,48 @@ runs:
         DEBUG: '${{ inputs.DEBUG }}'
       run: |
         set -xe
+        function parse_semantic_release_tag { #-> (tag: string)
+          # extract major/minor/patch and channel verion tag
+          if [[ $1 =~ (v([0-9]+)\.([0-9]+)\.([0-9]+)(-([a-zA-Z]+)\.([0-9]+))?)(-([0-9]+))?(-(.+))? ]]; then
+            last_version="${BASH_REMATCH[1]}"
+            last_channel="${BASH_REMATCH[6]}"
+
+            major_version="${BASH_REMATCH[2]}"
+            minor_version="${BASH_REMATCH[3]}"
+            patch_version="${BASH_REMATCH[4]}"
+            channel_version="${BASH_REMATCH[7]:-0}"
+
+            nb_commit_since_last_release="${BASH_REMATCH[9]:-0}"
+          else
+            major_version="0"
+            minor_version="0"
+            patch_version="0"
+            channel_version="0"
+            nb_commit_since_last_release="0"
+          fi
+        }
 
         CI_COMMIT_BRANCH="${GITHUB_REF#refs/heads/}"
 
         # Fetch git tags and commits.
-        git fetch >> /dev/null
-        git fetch --all --tags >> /dev/null
+        git fetch --all >> /dev/null
+        git fetch --tags >> /dev/null
 
-        last_version="$(git for-each-ref "refs/tags/*-${CI_COMMIT_BRANCH}.*" --count=1 --sort=-refname --format="%(refname:short)")"
-        [ $DEBUG ] && echo "last_version=$last_version"
+        # find last tag from the current commit sha
+        _last_tag_info=$(git describe --tags || true)
 
-        diff_path="${CI_COMMIT_BRANCH}"
+        parse_semantic_release_tag "$_last_tag_info"
+
+        if [[ $CI_COMMIT_BRANCH =~ $PRERELEASE_BRANCHES_REGEX && "$last_channel" != "" && "$last_channel" != "$CI_COMMIT_BRANCH" ]]; then
+          parse_semantic_release_tag "$(git describe --tags --match "v*.*.*-${CI_COMMIT_BRANCH}.*")"
+        fi
+
+        diff_path="--all"
         if [ $last_version ]; then
           diff_path="${last_version}.."
         fi
         commit_list="$(git rev-list --oneline $diff_path --format=%s --no-commit-header)"
         [ $DEBUG ] && echo "${commit_list}"
-
-        # extract major/minor/patch and channel verion tag
-        if [[ $last_version =~ v([0-9]+)\.([0-9]+)\.([0-9]+)(-${CI_COMMIT_BRANCH}\.([0-9]+))? ]]; then
-          major_version="${BASH_REMATCH[1]}"
-          minor_version="${BASH_REMATCH[2]}"
-          patch_version="${BASH_REMATCH[3]}"
-          channel_version="${BASH_REMATCH[5]}"
-        else
-          last_version="$(git for-each-ref "refs/tags/*.*.*" --count=1 --sort=-refname --format="%(refname:short)")"; [ $DEBUG ] && echo "last_version=$last_version"
-          if [[ $last_version =~ v([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
-            major_version="${BASH_REMATCH[1]}"
-            minor_version="${BASH_REMATCH[2]}"
-            patch_version="${BASH_REMATCH[3]}"
-            channel_version="0"
-          else
-            echo "Can't find previous tag. Publish first tag."
-            major_version="0"
-            minor_version="0"
-            patch_version="0"
-            channel_version="0"
-          fi
-        fi
 
         correct="false"
         level=0
@@ -110,7 +114,7 @@ runs:
           [ $DEBUG ] && echo "commit_prefix=$commit_prefix"
 
           # Check if commit type is breaking changes
-          if [ "$level" -lt "3" ] && [[ $commit_prefix =~ $LEVEL_2 ]]; then
+          if [ "$level" -lt "3" ] && [[ $commit_prefix =~ $LEVEL_3 ]]; then
             correct="true"
             level=3
             [ $DEBUG ] && echo "level=$level"
@@ -131,25 +135,19 @@ runs:
           fi
         done <<< "$commit_list"
 
-        if [[ "$channel_version" == "" || "$channel_version" == "0" ]]; then
+        if [[ ${CI_COMMIT_BRANCH} =~ $RELEASE_BRANCHES_REGEX && $channel_version -eq 0 || $channel_version -eq 0 ]]; then
           if [ "$level" -eq "3" ]; then
             # Increment major version tag
             echo $(( major_version++ )) >> /dev/null
-            minor_version="0"
-            patch_version="0"
-            channel_version="0"
           elif [ "$level" -eq "2" ]; then
             # Increment minor version tagc
             echo $(( minor_version++ )) >> /dev/null
-            patch_version="0"
-            channel_version="0"
           elif [ "$level" == "1" ]; then
             # Increment patch version tag
             echo $(( patch_version++ )) >> /dev/null
-            channel_version="0"
           fi
         fi
-        if [[ "$channel_version" != "" ]]; then
+        if [[ ${CI_COMMIT_BRANCH} =~ $PRERELEASE_BRANCHES_REGEX ]]; then
           # Increment channel version tag
           echo $(( channel_version++ )) >> /dev/null
         fi
