@@ -88,8 +88,7 @@ runs:
         CI_COMMIT_BRANCH="${GITHUB_REF#refs/heads/}"
 
         # Fetch git tags and commits.
-        git fetch --all >> /dev/null
-        git fetch --tags >> /dev/null
+        git fetch --all --tags >> /dev/null
 
         # find last tag from the current commit sha
         _last_tag_info=$(git describe --tags ${{ github.sha }} || true)
