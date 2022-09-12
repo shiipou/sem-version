@@ -1,5 +1,5 @@
-name: 'Semantic-Release'
-description: 'GitHub Action to find the next version of your project'
+name: 'SemRelease'
+description: 'GitHub Action to find the next version of your project using Conventional Commit'
 author: 'shiipou'
 
 inputs:
