@@ -61,7 +61,6 @@ runs:
         PRERELEASE_BRANCHES_REGEX: '${{ inputs.PRERELEASE_BRANCHES_REGEX }}'
         DEBUG: '${{ inputs.DEBUG }}'
       run: |
-        set -xe
         function parse_semantic_release_tag { #-> (tag: string)
           # extract major/minor/patch and channel verion tag
           if [[ $1 =~ (v([0-9]+)\.([0-9]+)\.([0-9]+)(-([a-zA-Z]+)\.([0-9]+))?)(-([0-9]+))?(-(.+))? ]]; then
