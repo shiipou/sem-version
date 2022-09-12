@@ -26,6 +26,7 @@ jobs:
       uses: shiipou/sem-release@stable
       with:
         RELEASE_BRANCHES_REGEX: '^(stable)$'
+        PRERELEASE_BRANCHES_REGEX: '^(beta|rc)$'
         ALLOW_FAILURE: false
         DEBUG: true
 
