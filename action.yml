@@ -92,7 +92,7 @@ runs:
         git fetch --tags >> /dev/null
 
         # find last tag from the current commit sha
-        _last_tag_info=$(git describe --tags || true)
+        _last_tag_info=$(git describe --tags ${{ github.sha }} || true)
 
         parse_semantic_release_tag "$_last_tag_info"
 
