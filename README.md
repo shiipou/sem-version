@@ -23,7 +23,7 @@ jobs:
 
     - name: Get-Version
       id: get-version
-      uses: ./
+      uses: shiipou/sem-version@stable
       with:
         RELEASE_BRANCHES_REGEX: '^(stable)$'
         ALLOW_FAILURE: false
