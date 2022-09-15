@@ -165,14 +165,14 @@ runs:
         if [[ ${CI_COMMIT_BRANCH} =~ $RELEASE_BRANCHES_REGEX ]]; then
           next_version="${major_version}.${minor_version}.${patch_version}"
           if [[ "$last_version" != "v${major_version}.${minor_version}.${patch_version}" ]]; then
-            echo '::set-output name=WILL_RELEASE::true'
+            MUST_RELEASE=true
           fi
 
         # If branch is pre-release branch
         elif [[ ${CI_COMMIT_BRANCH} =~ $PRERELEASE_BRANCHES_REGEX ]]; then
           next_version="${major_version}.${minor_version}.${patch_version}-${CI_COMMIT_BRANCH}.${channel_version}"
           if [[ "$last_version" != "v${major_version}.${minor_version}.${patch_version}-${CI_COMMIT_BRANCH}.${channel_version}" ]]; then
-            echo '::set-output name=WILL_RELEASE::true'
+            MUST_RELEASE=true
             echo '::set-output name=IS_PRE_RELEASE::true'
           fi
 
@@ -180,6 +180,11 @@ runs:
         elif [[ "$ALLOW_FAILURE" == "true" ]]; then
           echo "Will not update the version because current branch (${CI_COMMIT_BRANCH}) is not part of the release branches or pre-release branches."
           exit 3
+        fi
+        
+        search_tag="git tag --list v${next_version}"
+        if [ $MUST_RELEASE ] && [ -z "search_tag" ]; then
+            echo '::set-output name=WILL_RELEASE::true'
         fi
 
         echo "::set-output name=VERSION::${next_version}"
