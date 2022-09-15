@@ -183,7 +183,7 @@ runs:
         fi
         
         search_tag="git tag --list v${next_version}"
-        if [ $MUST_RELEASE && -z "search_tag" ]; then
+        if [ $MUST_RELEASE ] && [ -z "search_tag" ]; then
             echo '::set-output name=WILL_RELEASE::true'
         fi
 
