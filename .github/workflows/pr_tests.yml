@@ -22,8 +22,8 @@ jobs:
     - name: Release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      if: steps.get-version.outputs.WILL_RELEASE == 'true'
       run: |
+        echo "will_release: ${{ steps.get-version.outputs.WILL_RELEASE }}"
         echo "tag_name: v${{ steps.get-version.outputs.VERSION }}"
         echo "release_name: v${{ steps.get-version.outputs.VERSION }}"
         echo "body: v${{ steps.get-version.outputs.VERSION }}"
