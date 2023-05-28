@@ -93,12 +93,12 @@ runs:
         git fetch --unshallow >> /dev/null
 
         # find last tag from the current commit sha
-        _last_tag_info=$(git describe --tags ${{ github.sha }} || true)
+        _last_tag_info=$(git describe --tags ${{ github.sha }} 2>/dev/null || true)
 
         parse_semantic_release_tag "$_last_tag_info"
 
         if [[ $CI_COMMIT_BRANCH =~ $PRERELEASE_BRANCHES_REGEX && "$last_channel" != "" && "$last_channel" != "$CI_COMMIT_BRANCH" ]]; then
-          parse_semantic_release_tag "$(git describe --tags --match "v*.*.*-${CI_COMMIT_BRANCH}.*")"
+          parse_semantic_release_tag "$(git describe --tags --match "v*.*.*-${CI_COMMIT_BRANCH}.*" 2>/dev/null)"
         fi
 
         diff_path="--all"
@@ -182,8 +182,8 @@ runs:
           exit 3
         fi
 
-        search_tag="git tag --list v${next_version}"
-        if [ $MUST_RELEASE ] && [ -z "search_tag" ]; then
+        search_tag="$(git tag --list v${next_version})"
+        if [ $MUST_RELEASE ] && [ -z "${search_tag}" ]; then
             echo 'WILL_RELEASE=true' >> $GITHUB_OUTPUT
         fi
 
