@@ -1,4 +1,4 @@
-name: 'SemRelease'
+name: 'SemVersion'
 description: 'GitHub Action to find the next version of your project using Conventional Commit'
 author: 'shiipou'
 
