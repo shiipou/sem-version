@@ -90,6 +90,7 @@ runs:
         $set_debug_mode
 
         CI_COMMIT_BRANCH="${GITHUB_REF#refs/heads/}"
+        echo "Current branch: $CI_COMMIT_BRANCH"
 
         # Fetch git tags and commits.
         git fetch --all --tags >> /dev/null
@@ -107,6 +108,7 @@ runs:
 
         diff_path="--all"
         if [ $last_version ]; then
+          echo "Last version found: $last_version"
           diff_path="${last_version}.."
         fi
         commit_list="$(git rev-list --oneline $diff_path --format=%s --no-commit-header)"
@@ -119,6 +121,7 @@ runs:
             commit=${commit,,}
           fi
           [ $DEBUG ] && echo "commit=$commit"
+
           # Extract the commit type
           commit_prefix="${commit//:*}"
           [ $DEBUG ] && echo "commit_prefix=$commit_prefix"
@@ -143,6 +146,7 @@ runs:
             correct="true"
             [ $DEBUG ] && echo "level=$level"
           fi
+          echo "$commit"
         done <<< "$commit_list"
 
         if [[ ${CI_COMMIT_BRANCH} =~ $RELEASE_BRANCHES_REGEX && $channel_version -eq 0 || $channel_version -eq 0 ]]; then
