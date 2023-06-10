@@ -176,6 +176,7 @@ runs:
           if [[ "$last_version" != "v${major_version}.${minor_version}.${patch_version}" ]]; then
             MUST_RELEASE=true
           fi
+          echo 'Find a release branch'
 
         # If branch is pre-release branch
         elif [[ ${CI_COMMIT_BRANCH} =~ $PRERELEASE_BRANCHES_REGEX ]]; then
@@ -183,10 +184,8 @@ runs:
           if [[ "$last_version" != "v${major_version}.${minor_version}.${patch_version}-${CI_COMMIT_BRANCH}.${channel_version}" ]]; then
             MUST_RELEASE=true
             echo 'IS_PRE_RELEASE=true' >> $GITHUB_OUTPUT
-            echo 'Find a pre-release branch'
-          else
-            echo 'Find a release branch'
           fi
+          echo 'Find a pre-release branch'
 
         # If branch is other branch
         elif [[ "$ALLOW_FAILURE" == "true" ]]; then
