@@ -35,9 +35,6 @@ inputs:
     description: "Set if set to 'false' it didn't need to match the case of the commit message that will trigger a release. Else the case must match."
     required: false
     default: 'false'
-  DEBUG:
-    description: 'If set, will show more info about running action'
-    required: false
 outputs:
   VERSION:
     description: 'The next version find by semantic-release'
@@ -63,7 +60,7 @@ runs:
         LEVEL_3: '${{ inputs.LEVEL_3 }}'
         RELEASE_BRANCHES_REGEX: '${{ inputs.RELEASE_BRANCHES_REGEX }}'
         PRERELEASE_BRANCHES_REGEX: '${{ inputs.PRERELEASE_BRANCHES_REGEX }}'
-        DEBUG: '${{ inputs.DEBUG }}'
+        ACTIONS_RUNNER_DEBUG: '${{ inputs.ACTIONS_RUNNER_DEBUG }}'
       run: |
         function parse_semantic_release_tag { #-> (tag: string)
           # extract major/minor/patch and channel verion tag
@@ -86,7 +83,7 @@ runs:
           fi
         }
 
-        if [[ "$DEBUG" == "all" ]]; then set_debug_mode='set -xe'; fi
+        if [[ "$ACTIONS_RUNNER_ACTIONS_RUNNER_DEBUG " == "all" ]]; then set_debug_mode='set -xe'; fi
         $set_debug_mode
 
         CI_COMMIT_BRANCH="${GITHUB_REF#refs/heads/}"
@@ -112,7 +109,7 @@ runs:
           diff_path="${last_version}.."
         fi
         commit_list="$(git rev-list --oneline $diff_path --format=%s --no-commit-header)"
-        [ $DEBUG ] && echo "${commit_list}"
+        [ $ACTIONS_RUNNER_DEBUG ] && echo "${commit_list}"
 
         correct="false"
         level=0
@@ -120,31 +117,31 @@ runs:
           if [ "${{ inputs.CASE_SENSITIVE }}" == 'false' ]; then
             commit=${commit,,}
           fi
-          [ $DEBUG ] && echo "commit=$commit"
+          [ $ACTIONS_RUNNER_DEBUG ] && echo "commit=$commit"
 
           # Extract the commit type
           commit_prefix="${commit//:*}"
-          [ $DEBUG ] && echo "commit_prefix=$commit_prefix"
+          [ $ACTIONS_RUNNER_DEBUG ] && echo "commit_prefix=$commit_prefix"
 
           # Check if commit type is breaking changes
           if [ "$level" -lt "3" ] && [[ $commit_prefix =~ $LEVEL_3 ]]; then
             correct="true"
             level=3
-            [ $DEBUG ] && echo "level=$level"
+            [ $ACTIONS_RUNNER_DEBUG ] && echo "level=$level"
           # Check if prefix is in the array of level 2 prefix
           elif [ "$level" -lt "2" ] && [[ $commit_prefix =~ $LEVEL_2 ]]; then
             correct="true"
             level=2
-            [ $DEBUG ] && echo "level=$level"
+            [ $ACTIONS_RUNNER_DEBUG ] && echo "level=$level"
           # Check if prefix is in the array of level 1 prefix
           elif [ "$level" -lt "1" ] && [[ $commit_prefix =~ $LEVEL_1 ]]; then
             correct="true"
             level=1
-            [ $DEBUG ] && echo "level=$level"
+            [ $ACTIONS_RUNNER_DEBUG ] && echo "level=$level"
           # Check if prefix is in the array of level 0 prefix
           elif [[ $commit_prefix =~ $LEVEL_0 ]]; then
             correct="true"
-            [ $DEBUG ] && echo "level=$level"
+            [ $ACTIONS_RUNNER_DEBUG ] && echo "level=$level"
           fi
           echo "$commit"
         done <<< "$commit_list"
