@@ -185,6 +185,7 @@ runs:
           if [[ "$last_version" != "v${major_version}.${minor_version}.${patch_version}-${CI_COMMIT_BRANCH}.${channel_version}" ]]; then
             MUST_RELEASE=true
             echo 'IS_PRE_RELEASE=true' >> $GITHUB_OUTPUT
+            echo 'Find a pre-release branch'
           fi
 
         # If branch is other branch
@@ -196,7 +197,7 @@ runs:
         search_tag="$(git tag --list v${next_version})"
         if [ $MUST_RELEASE ] && [ -z "${search_tag}" ]; then
             echo 'WILL_RELEASE=true' >> $GITHUB_OUTPUT
-            echo "Will release version: ${next_version}"
+            echo "Will release next version: ${next_version}"
         else
             echo 'No new release needed for theses commits'
         fi
