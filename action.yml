@@ -196,6 +196,8 @@ runs:
         search_tag="$(git tag --list v${next_version})"
         if [ $MUST_RELEASE ] && [ -z "${search_tag}" ]; then
             echo 'WILL_RELEASE=true' >> $GITHUB_OUTPUT
+            echo "Will release version: ${next_version}"
+        else
+            echo 'No new release needed for theses commits'
         fi
-
         echo "VERSION=${next_version}" >> $GITHUB_OUTPUT
