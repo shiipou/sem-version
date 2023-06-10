@@ -60,7 +60,6 @@ runs:
         LEVEL_3: '${{ inputs.LEVEL_3 }}'
         RELEASE_BRANCHES_REGEX: '${{ inputs.RELEASE_BRANCHES_REGEX }}'
         PRERELEASE_BRANCHES_REGEX: '${{ inputs.PRERELEASE_BRANCHES_REGEX }}'
-        ACTIONS_RUNNER_DEBUG: '${{ inputs.ACTIONS_RUNNER_DEBUG }}'
       run: |
         function parse_semantic_release_tag { #-> (tag: string)
           # extract major/minor/patch and channel verion tag
