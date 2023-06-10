@@ -182,6 +182,8 @@ runs:
             MUST_RELEASE=true
             echo 'IS_PRE_RELEASE=true' >> $GITHUB_OUTPUT
             echo 'Find a pre-release branch'
+          else
+            echo 'Find a release branch'
           fi
 
         # If branch is other branch
