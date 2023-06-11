@@ -90,6 +90,7 @@ runs:
 
         # Fetch git tags and commits.
         git fetch --all --tags >> /dev/null
+
         # remove the --depth=1 made by action/checkout@v3
         if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
           git fetch --unshallow >> /dev/null
@@ -109,42 +110,62 @@ runs:
           echo "Last version found: $last_version"
           diff_path="${last_version}.."
         fi
-        commit_list="$(git rev-list --oneline $diff_path --format=%s --no-commit-header)"
+        commit_list="$(git rev-list --oneline $diff_path --format=%h --no-commit-header)"
         [ $ACTIONS_STEP_DEBUG ] && echo "${commit_list}"
 
         correct="false"
         level=0
+
+        declare -A CHANGELOG
         while IFS= read -r commit; do
+          changelog_prefix=""
+          subject="$(git log -1 --format=%s $commit | head -n1)"
           if [ "${{ inputs.CASE_SENSITIVE }}" == 'false' ]; then
-            commit=${commit,,}
+            subject=${subject,,}
           fi
-          [ $ACTIONS_STEP_DEBUG ] && echo "commit=$commit"
+          
+          [ $ACTIONS_STEP_DEBUG ] && echo "subject=$subject"
 
           # Extract the commit type
-          commit_prefix="${commit//:*}"
+          commit_prefix="${subject%%[(: ]*}"
           [ $ACTIONS_STEP_DEBUG ] && echo "commit_prefix=$commit_prefix"
 
           # Check if commit type is breaking changes
           if [ "$level" -lt "3" ] && [[ $commit_prefix =~ $LEVEL_3 ]]; then
             correct="true"
             level=3
+
             [ $ACTIONS_STEP_DEBUG ] && echo "level=$level"
           # Check if prefix is in the array of level 2 prefix
           elif [ "$level" -lt "2" ] && [[ $commit_prefix =~ $LEVEL_2 ]]; then
             correct="true"
             level=2
+
             [ $ACTIONS_STEP_DEBUG ] && echo "level=$level"
           # Check if prefix is in the array of level 1 prefix
           elif [ "$level" -lt "1" ] && [[ $commit_prefix =~ $LEVEL_1 ]]; then
             correct="true"
             level=1
+
             [ $ACTIONS_STEP_DEBUG ] && echo "level=$level"
           # Check if prefix is in the array of level 0 prefix
           elif [[ $commit_prefix =~ $LEVEL_0 ]]; then
             correct="true"
+
             [ $ACTIONS_STEP_DEBUG ] && echo "level=$level"
           fi
-          echo "$commit"
+
+
+          if [[ $commit_prefix =~ $LEVEL_3 ]]; then
+            changelog_prefix=":boom: BREAKING CHANGE "
+          elif [[ $commit_prefix =~ $LEVEL_2 ]]; then
+            changelog_prefix=":sparkles: "
+          elif [[ $commit_prefix =~ $LEVEL_1 ]]; then
+            changelog_prefix=":hammer: "
+          fi
+
+          CHANGELOG["$commit_prefix"]+="- ${changelog_prefix}$subject ($commit)\n"
+          echo "$subject"
         done <<< "$commit_list"
 
         if [[ ${CI_COMMIT_BRANCH} =~ $RELEASE_BRANCHES_REGEX && $channel_version -eq 0 || $channel_version -eq 0 ]]; then
@@ -159,6 +180,7 @@ runs:
             echo $(( patch_version++ )) >> /dev/null
           fi
         fi
+
         if [[ "$level" -gt "0" && ${CI_COMMIT_BRANCH} =~ $PRERELEASE_BRANCHES_REGEX ]]; then
           # Increment channel version tag
           echo $(( channel_version++ )) >> /dev/null
@@ -192,6 +214,19 @@ runs:
           echo "Will not update the version because current branch (${CI_COMMIT_BRANCH}) is not part of the release branches or pre-release branches."
           exit 3
         fi
+
+        # Generate changelog
+        changelog="# Changelog\n\n## ${next_version}\n\n"
+        for prefix in "${!CHANGELOG[@]}"; do
+          changelog+="## ${prefix}\n"
+          changelog+="${CHANGELOG[$prefix]}\n"
+        done
+        changelog+="\n\n---\n\n**Full Changelog:** [${last_version}...${next_version}](${CI_PROJECT_URL}/compare/${last_version}...${next_version})\n"
+        
+        # Publish changelog as action output
+        echo "CHANGELOG<<$EOF" >> "$GITHUB_OUTPUT"
+        echo "$changelog" >> "$GITHUB_OUTPUT"
+        echo "$EOF" >> "$GITHUB_OUTPUT"
 
         search_tag="$(git tag --list v${next_version})"
         if [ $MUST_RELEASE ] && [ -z "${search_tag}" ]; then
