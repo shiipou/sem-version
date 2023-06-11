@@ -92,7 +92,7 @@ runs:
         git fetch --all --tags >> /dev/null
 
         # remove the --depth=1 made by action/checkout@v3
-        if !$ACT; then
+        if [ -z "$ACT" ]; then
           git fetch --unshallow >> /dev/null
         fi
 
