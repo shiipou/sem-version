@@ -39,7 +39,7 @@ jobs:
         tag_name: v${{ steps.get-version.outputs.VERSION }}
         release_name: v${{ steps.get-version.outputs.VERSION }}
         body: |
-          v${{ steps.get-version.outputs.CHANGELOG }}
+          ${{ steps.get-version.outputs.CHANGELOG }}
         draft: false
         prerelease: ${{ steps.get-version.outputs.IS_PRE_RELEASE }}
 ```
