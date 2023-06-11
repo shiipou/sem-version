@@ -82,7 +82,7 @@ runs:
           fi
         }
 
-        if $ACTIONS_STEP_DEBUG ; then set_debug_mode='set -xe'; fi
+        if [[ -n "$ACTIONS_STEP_DEBUG" ]]; then set_debug_mode='set -xe'; fi
         $set_debug_mode
 
         CI_COMMIT_BRANCH="${GITHUB_REF#refs/heads/}"
@@ -163,8 +163,9 @@ runs:
           elif [[ $commit_prefix =~ $LEVEL_1 ]]; then
             changelog_prefix=":hammer: "
           fi
-
-          CHANGELOG["$commit_prefix"]+="- ${changelog_prefix}$subject ($commit)"
+          
+          subject="- ${changelog_prefix}$subject ($commit)"
+          CHANGELOG["$commit_prefix"]+="$subject"
           echo "$subject"
         done <<< "$commit_list"
 
