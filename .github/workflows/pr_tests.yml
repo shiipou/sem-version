@@ -28,3 +28,4 @@ jobs:
         echo "release_name: v${{ steps.get-version.outputs.VERSION }}"
         echo "body: v${{ steps.get-version.outputs.VERSION }}"
         echo "prerelease: ${{ steps.get-version.outputs.IS_PRE_RELEASE }}"
+        echo "changelog: \n\n=== ${{ steps.get-version.outputs.CHANGELOG }} \n\n==="
