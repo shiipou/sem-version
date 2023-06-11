@@ -92,7 +92,7 @@ runs:
         git fetch --all --tags >> /dev/null
 
         # remove the --depth=1 made by action/checkout@v3
-        if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
+        if !$ACT; then
           git fetch --unshallow >> /dev/null
         fi
 
@@ -221,7 +221,7 @@ runs:
           changelog+="## ${prefix}\n"
           changelog+="${CHANGELOG[$prefix]}\n"
         done
-        changelog+="\n\n---\n\n**Full Changelog:** [${last_version}...${next_version}](${CI_PROJECT_URL}/compare/${last_version}...${next_version})\n"
+        changelog+="\n\n---\n\n**Full Changelog:** [${last_version}...${next_version}](${{ github.server_url }}/${{ github.repository }}/compare/${last_version}..v${next_version})\n"
         
         # Publish changelog as action output
         EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
