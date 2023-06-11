@@ -227,7 +227,10 @@ runs:
         body+="\n\n---\n\n**Full Changelog:** [${last_version}...${next_version}](${{ github.server_url }}/${{ github.repository }}/compare/${last_version}..v${next_version})\n"
         
         # Publish changelog as action output
-        echo "CHANGELOG=$body" >> "$GITHUB_OUTPUT"
+        EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+        echo "CHANGELOG<<$EOF" >> "$GITHUB_OUTPUT"
+        echo -n "${body}" >> "$GITHUB_OUTPUT"
+        echo "$EOF" >> "$GITHUB_OUTPUT"
 
         search_tag="$(git tag --list v${next_version})"
         if $MUST_RELEASE && [ -z "${search_tag}" ]; then
