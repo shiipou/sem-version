@@ -82,7 +82,7 @@ runs:
           fi
         }
 
-        if [[ "$ACTIONS_RUNNER_ACTIONS_STEP_DEBUG " == "all" ]]; then set_debug_mode='set -xe'; fi
+        if $ACTIONS_STEP_DEBUG ; then set_debug_mode='set -xe'; fi
         $set_debug_mode
 
         CI_COMMIT_BRANCH="${GITHUB_REF#refs/heads/}"
@@ -230,7 +230,7 @@ runs:
         echo "$EOF" >> "$GITHUB_OUTPUT"
 
         search_tag="$(git tag --list v${next_version})"
-        if [ $MUST_RELEASE ] && [ -z "${search_tag}" ]; then
+        if $MUST_RELEASE && [ -z "${search_tag}" ]; then
             echo 'WILL_RELEASE=true' >> $GITHUB_OUTPUT
             echo "Will release next version: ${next_version}"
         else
