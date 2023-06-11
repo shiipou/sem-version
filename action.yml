@@ -229,7 +229,7 @@ runs:
         # Publish changelog as action output
         EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
         echo "CHANGELOG<<$EOF" >> "$GITHUB_OUTPUT"
-        echo -n "${body}" >> "$GITHUB_OUTPUT"
+        echo -e "${body}" >> "$GITHUB_OUTPUT"
         echo "$EOF" >> "$GITHUB_OUTPUT"
 
         search_tag="$(git tag --list v${next_version})"
