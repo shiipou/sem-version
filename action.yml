@@ -216,15 +216,15 @@ runs:
         fi
 
         # Generate changelog
-        changelog="# Changelog\n\n## ${next_version}\n\n"
+        body="# Changelog\n\n## ${next_version}\n\n"
         for prefix in "${!CHANGELOG[@]}"; do
-          changelog+="## ${prefix}\n"
-          changelog+="${CHANGELOG[$prefix]}\n"
+          body+="## ${prefix}\n"
+          body+="${CHANGELOG[$prefix]}\n"
         done
-        changelog+="\n\n---\n\n**Full Changelog:** [${last_version}...${next_version}](${{ github.server_url }}/${{ github.repository }}/compare/${last_version}..v${next_version})\n"
+        body+="\n\n---\n\n**Full Changelog:** [${last_version}...${next_version}](${{ github.server_url }}/${{ github.repository }}/compare/${last_version}..v${next_version})\n"
         
         # Publish changelog as action output
-        echo "CHANGELOG=$changelog" >> "$GITHUB_OUTPUT"
+        echo "CHANGELOG=$body" >> "$GITHUB_OUTPUT"
 
         search_tag="$(git tag --list v${next_version})"
         if $MUST_RELEASE && [ -z "${search_tag}" ]; then
