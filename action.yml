@@ -219,9 +219,10 @@ runs:
         fi
 
         # Generate changelog
-        body="# Changelog\n\n## ${next_version}\n\n"
+        body="## Changelog ${next_version}\n\n"
         for prefix in "${!CHANGELOG[@]}"; do
-          body+="## ${prefix}\n"
+          # First letter of prefix to uppercase
+          prefix="$(tr '[:lower:]' '[:upper:]' <<< ${prefix:0:1})${prefix:1}"
           body+="${CHANGELOG[$prefix]}\n"
         done
         body+="\n\n---\n\n**Full Changelog:** [${last_version}...${next_version}](${{ github.server_url }}/${{ github.repository }}/compare/${last_version}..v${next_version})\n"
