@@ -45,6 +45,9 @@ outputs:
   IS_PRE_RELEASE:
     description: 'Only set to "true" if the release tag will be a pre-release'
     value: ${{ steps.semantic-release.outputs.IS_PRE_RELEASE }}
+  CHANGELOG:
+    description: 'Changelog test to be added to the release'
+    value: ${{ steps.semantic-release.outputs.CHANGELOG }}
 
 runs:
   using: "composite"
