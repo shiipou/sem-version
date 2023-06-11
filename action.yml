@@ -164,7 +164,7 @@ runs:
             changelog_prefix=":hammer: "
           fi
 
-          CHANGELOG["$commit_prefix"]+="- ${changelog_prefix}$subject ($commit)\n"
+          CHANGELOG["$commit_prefix"]+="- ${changelog_prefix}$subject ($commit)"
           echo "$subject"
         done <<< "$commit_list"
 
@@ -222,7 +222,7 @@ runs:
           echo -e "## ${prefix}\n" >> "$changelog_file"
           echo -e "${CHANGELOG[$prefix]}\n" >> "$changelog_file"
         done
-        echo -e "\n\n---\n\n**Full Changelog:** [${last_version}...${next_version}](${{ github.server_url }}/${{ github.repository }}/compare/${last_version}..v${next_version})\n" >> "$changelog_file"
+        echo -e "---\n\n**Full Changelog:** [${last_version}...${next_version}](${{ github.server_url }}/${{ github.repository }}/compare/${last_version}..v${next_version})\n" >> "$changelog_file"
         
         # Publish changelog as action output
         EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
