@@ -1,10 +1,10 @@
-name: Release
+name: Tests
 on:
   pull_request:
 
 jobs:
-  release:
-    name: Release
+  test:
+    name: Tests
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
