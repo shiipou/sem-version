@@ -216,17 +216,18 @@ runs:
         fi
 
         # Generate changelog
-        changelog="# Changelog\n\n## ${next_version}\n\n"
+        changelog_file="$(mktemp)"
+        echo -e "# Changelog\n\n## ${next_version}\n\n" > "$changelog_file"
         for prefix in "${!CHANGELOG[@]}"; do
-          changelog+="## ${prefix}\n"
-          changelog+="${CHANGELOG[$prefix]}\n"
+          echo -e "## ${prefix}\n" >> "$changelog_file"
+          echo -e "${CHANGELOG[$prefix]}\n" >> "$changelog_file"
         done
-        changelog+="\n\n---\n\n**Full Changelog:** [${last_version}...${next_version}](${{ github.server_url }}/${{ github.repository }}/compare/${last_version}..v${next_version})\n"
+        echo -e "\n\n---\n\n**Full Changelog:** [${last_version}...${next_version}](${{ github.server_url }}/${{ github.repository }}/compare/${last_version}..v${next_version})\n" >> "$changelog_file"
         
         # Publish changelog as action output
         EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
         echo "CHANGELOG<<$EOF" >> "$GITHUB_OUTPUT"
-        echo "$changelog" >> "$GITHUB_OUTPUT"
+        cat "$changelog_file" >> "$GITHUB_OUTPUT"
         echo "$EOF" >> "$GITHUB_OUTPUT"
 
         search_tag="$(git tag --list v${next_version})"
