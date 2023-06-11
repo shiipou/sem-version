@@ -13,7 +13,7 @@ jobs:
     timeout-minutes: 2
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Get-Version
       id: get-version
@@ -32,6 +32,6 @@ jobs:
         tag_name: v${{ steps.get-version.outputs.VERSION }}
         release_name: v${{ steps.get-version.outputs.VERSION }}
         body: |
-          v${{ steps.get-version.outputs.VERSION }}
+          ${{ steps.get-version.outputs.CHANGELOG }}
         draft: false
         prerelease: ${{ steps.get-version.outputs.IS_PRE_RELEASE }}

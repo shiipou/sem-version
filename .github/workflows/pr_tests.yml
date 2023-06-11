@@ -1,10 +1,10 @@
-name: Release
+name: Tests
 on:
   pull_request:
 
 jobs:
-  release:
-    name: Release
+  test:
+    name: Tests
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
@@ -22,9 +22,10 @@ jobs:
     - name: Release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      if: steps.get-version.outputs.WILL_RELEASE == 'true'
       run: |
+        echo "will_release: ${{ steps.get-version.outputs.WILL_RELEASE }}"
         echo "tag_name: v${{ steps.get-version.outputs.VERSION }}"
         echo "release_name: v${{ steps.get-version.outputs.VERSION }}"
         echo "body: v${{ steps.get-version.outputs.VERSION }}"
         echo "prerelease: ${{ steps.get-version.outputs.IS_PRE_RELEASE }}"
+        echo "changelog: \n\n=== ${{ steps.get-version.outputs.CHANGELOG }} \n\n==="

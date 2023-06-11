@@ -1,4 +1,4 @@
-name: 'SemRelease'
+name: 'SemVersion'
 description: 'GitHub Action to find the next version of your project using Conventional Commit'
 author: 'shiipou'
 
@@ -31,9 +31,10 @@ inputs:
     description: "The regex to find the pre-release branch."
     required: false
     default: '^(rc|beta|hotfix)$'
-  DEBUG:
-    description: 'If set, will show more info about running action'
+  CASE_SENSITIVE:
+    description: "Set if set to 'false' it didn't need to match the case of the commit message that will trigger a release. Else the case must match."
     required: false
+    default: 'false'
 outputs:
   VERSION:
     description: 'The next version find by semantic-release'
@@ -44,6 +45,9 @@ outputs:
   IS_PRE_RELEASE:
     description: 'Only set to "true" if the release tag will be a pre-release'
     value: ${{ steps.semantic-release.outputs.IS_PRE_RELEASE }}
+  CHANGELOG:
+    description: 'Changelog test to be added to the release'
+    value: ${{ steps.semantic-release.outputs.CHANGELOG }}
 
 runs:
   using: "composite"
@@ -59,7 +63,6 @@ runs:
         LEVEL_3: '${{ inputs.LEVEL_3 }}'
         RELEASE_BRANCHES_REGEX: '${{ inputs.RELEASE_BRANCHES_REGEX }}'
         PRERELEASE_BRANCHES_REGEX: '${{ inputs.PRERELEASE_BRANCHES_REGEX }}'
-        DEBUG: '${{ inputs.DEBUG }}'
       run: |
         function parse_semantic_release_tag { #-> (tag: string)
           # extract major/minor/patch and channel verion tag
@@ -82,60 +85,90 @@ runs:
           fi
         }
 
-        if [[ "$DEBUG" == "all" ]]; then set_debug_mode='set -xe'; fi
+        if $ACTIONS_STEP_DEBUG ; then set_debug_mode='set -xe'; fi
         $set_debug_mode
 
         CI_COMMIT_BRANCH="${GITHUB_REF#refs/heads/}"
+        echo "Current branch: $CI_COMMIT_BRANCH"
 
         # Fetch git tags and commits.
         git fetch --all --tags >> /dev/null
+
         # remove the --depth=1 made by action/checkout@v3
-        git fetch --unshallow >> /dev/null
+        if [ -z "$ACT" ]; then
+          git fetch --unshallow >> /dev/null
+        fi
 
         # find last tag from the current commit sha
-        _last_tag_info=$(git describe --tags ${{ github.sha }} || true)
+        _last_tag_info=$(git describe --tags ${{ github.sha }} 2>/dev/null || true)
 
         parse_semantic_release_tag "$_last_tag_info"
 
         if [[ $CI_COMMIT_BRANCH =~ $PRERELEASE_BRANCHES_REGEX && "$last_channel" != "" && "$last_channel" != "$CI_COMMIT_BRANCH" ]]; then
-          parse_semantic_release_tag "$(git describe --tags --match "v*.*.*-${CI_COMMIT_BRANCH}.*")"
+          parse_semantic_release_tag "$(git describe --tags --match "v*.*.*-${CI_COMMIT_BRANCH}.*" 2>/dev/null)"
         fi
 
         diff_path="--all"
         if [ $last_version ]; then
+          echo "Last version found: $last_version"
           diff_path="${last_version}.."
         fi
-        commit_list="$(git rev-list --oneline $diff_path --format=%s --no-commit-header)"
-        [ $DEBUG ] && echo "${commit_list}"
+        commit_list="$(git rev-list --oneline $diff_path --format=%h --no-commit-header)"
+        [ $ACTIONS_STEP_DEBUG ] && echo "${commit_list}"
 
         correct="false"
         level=0
+
+        declare -A CHANGELOG
         while IFS= read -r commit; do
-          [ $DEBUG ] && echo "commit=$commit"
+          changelog_prefix=""
+          subject="$(git log -1 --format=%s $commit | head -n1)"
+          if [ "${{ inputs.CASE_SENSITIVE }}" == 'false' ]; then
+            subject=${subject,,}
+          fi
+          
+          [ $ACTIONS_STEP_DEBUG ] && echo "subject=$subject"
+
           # Extract the commit type
-          commit_prefix="${commit//:*}"
-          [ $DEBUG ] && echo "commit_prefix=$commit_prefix"
+          commit_prefix="${subject%%[(: ]*}"
+          [ $ACTIONS_STEP_DEBUG ] && echo "commit_prefix=$commit_prefix"
 
           # Check if commit type is breaking changes
           if [ "$level" -lt "3" ] && [[ $commit_prefix =~ $LEVEL_3 ]]; then
             correct="true"
             level=3
-            [ $DEBUG ] && echo "level=$level"
+
+            [ $ACTIONS_STEP_DEBUG ] && echo "level=$level"
           # Check if prefix is in the array of level 2 prefix
           elif [ "$level" -lt "2" ] && [[ $commit_prefix =~ $LEVEL_2 ]]; then
             correct="true"
             level=2
-            [ $DEBUG ] && echo "level=$level"
+
+            [ $ACTIONS_STEP_DEBUG ] && echo "level=$level"
           # Check if prefix is in the array of level 1 prefix
           elif [ "$level" -lt "1" ] && [[ $commit_prefix =~ $LEVEL_1 ]]; then
             correct="true"
             level=1
-            [ $DEBUG ] && echo "level=$level"
+
+            [ $ACTIONS_STEP_DEBUG ] && echo "level=$level"
           # Check if prefix is in the array of level 0 prefix
           elif [[ $commit_prefix =~ $LEVEL_0 ]]; then
             correct="true"
-            [ $DEBUG ] && echo "level=$level"
+
+            [ $ACTIONS_STEP_DEBUG ] && echo "level=$level"
           fi
+
+
+          if [[ $commit_prefix =~ $LEVEL_3 ]]; then
+            changelog_prefix=":boom: BREAKING CHANGE "
+          elif [[ $commit_prefix =~ $LEVEL_2 ]]; then
+            changelog_prefix=":sparkles: "
+          elif [[ $commit_prefix =~ $LEVEL_1 ]]; then
+            changelog_prefix=":hammer: "
+          fi
+
+          CHANGELOG["$commit_prefix"]+="- ${changelog_prefix}$subject ($commit)\n"
+          echo "$subject"
         done <<< "$commit_list"
 
         if [[ ${CI_COMMIT_BRANCH} =~ $RELEASE_BRANCHES_REGEX && $channel_version -eq 0 || $channel_version -eq 0 ]]; then
@@ -150,6 +183,7 @@ runs:
             echo $(( patch_version++ )) >> /dev/null
           fi
         fi
+
         if [[ "$level" -gt "0" && ${CI_COMMIT_BRANCH} =~ $PRERELEASE_BRANCHES_REGEX ]]; then
           # Increment channel version tag
           echo $(( channel_version++ )) >> /dev/null
@@ -165,16 +199,18 @@ runs:
         if [[ ${CI_COMMIT_BRANCH} =~ $RELEASE_BRANCHES_REGEX ]]; then
           next_version="${major_version}.${minor_version}.${patch_version}"
           if [[ "$last_version" != "v${major_version}.${minor_version}.${patch_version}" ]]; then
-            echo '::set-output name=WILL_RELEASE::true'
+            MUST_RELEASE=true
           fi
+          echo 'Find a release branch'
 
         # If branch is pre-release branch
         elif [[ ${CI_COMMIT_BRANCH} =~ $PRERELEASE_BRANCHES_REGEX ]]; then
           next_version="${major_version}.${minor_version}.${patch_version}-${CI_COMMIT_BRANCH}.${channel_version}"
           if [[ "$last_version" != "v${major_version}.${minor_version}.${patch_version}-${CI_COMMIT_BRANCH}.${channel_version}" ]]; then
-            echo '::set-output name=WILL_RELEASE::true'
-            echo '::set-output name=IS_PRE_RELEASE::true'
+            MUST_RELEASE=true
+            echo 'IS_PRE_RELEASE=true' >> $GITHUB_OUTPUT
           fi
+          echo 'Find a pre-release branch'
 
         # If branch is other branch
         elif [[ "$ALLOW_FAILURE" == "true" ]]; then
@@ -182,4 +218,26 @@ runs:
           exit 3
         fi
 
-        echo "::set-output name=VERSION::${next_version}"
+        # Generate changelog
+        body="## Changelog ${next_version}\n\n"
+        for prefix in "${!CHANGELOG[@]}"; do
+          # First letter of prefix to uppercase
+          prefix="$(tr '[:lower:]' '[:upper:]' <<< ${prefix:0:1})${prefix:1}"
+          body+="${CHANGELOG[$prefix]}\n"
+        done
+        body+="\n\n---\n\n**Full Changelog:** [${last_version}...${next_version}](${{ github.server_url }}/${{ github.repository }}/compare/${last_version}..v${next_version})\n"
+        
+        # Publish changelog as action output
+        EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+        echo "CHANGELOG<<$EOF" >> "$GITHUB_OUTPUT"
+        echo -e "${body}" >> "$GITHUB_OUTPUT"
+        echo "$EOF" >> "$GITHUB_OUTPUT"
+
+        search_tag="$(git tag --list v${next_version})"
+        if $MUST_RELEASE && [ -z "${search_tag}" ]; then
+            echo 'WILL_RELEASE=true' >> $GITHUB_OUTPUT
+            echo "Will release next version: ${next_version}"
+        else
+            echo 'No new release needed for theses commits'
+        fi
+        echo "VERSION=${next_version}" >> $GITHUB_OUTPUT

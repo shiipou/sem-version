@@ -1,4 +1,4 @@
-# SemRelease
+# SemVersion
 Simple but enough Semantic release action for GitHub that totally replace nvm one.
 
 ## Usage :
@@ -23,7 +23,7 @@ jobs:
 
     - name: Get-Version
       id: get-version
-      uses: shiipou/sem-release@stable
+      uses: shiipou/sem-version@stable
       with:
         RELEASE_BRANCHES_REGEX: '^(stable)$'
         PRERELEASE_BRANCHES_REGEX: '^(beta|rc)$'
@@ -39,7 +39,7 @@ jobs:
         tag_name: v${{ steps.get-version.outputs.VERSION }}
         release_name: v${{ steps.get-version.outputs.VERSION }}
         body: |
-          v${{ steps.get-version.outputs.VERSION }}
+          ${{ steps.get-version.outputs.CHANGELOG }}
         draft: false
         prerelease: ${{ steps.get-version.outputs.IS_PRE_RELEASE }}
 ```
