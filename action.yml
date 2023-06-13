@@ -99,6 +99,13 @@ runs:
           git fetch --unshallow >> /dev/null
         fi
 
+        # Skip a release if current commit contain [skip-ci]
+        subject="$(git log -1 --format=%s $commit)
+        if [[ $subject == *"[skip-ci]"* ]]; then
+          echo "Skip a release because the commit message contain [skip-ci]"
+          exit 0
+        fi
+
         # find last tag from the current commit sha
         _last_tag_info=$(git describe --tags ${{ github.sha }} 2>/dev/null || true)
 
