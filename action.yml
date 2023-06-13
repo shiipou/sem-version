@@ -175,9 +175,12 @@ runs:
           if [ "$level" -eq "3" ]; then
             # Increment major version tag
             echo $(( major_version++ )) >> /dev/null
+            minor_version=0
+            patch_version=0
           elif [ "$level" -eq "2" ]; then
             # Increment minor version tagc
             echo $(( minor_version++ )) >> /dev/null
+            patch_version=0
           elif [ "$level" == "1" ]; then
             # Increment patch version tag
             echo $(( patch_version++ )) >> /dev/null
