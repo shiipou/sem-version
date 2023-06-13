@@ -100,7 +100,7 @@ runs:
         fi
 
         # Skip a release if current commit contain [skip-ci]
-        subject="$(git log -1 --format=%s ${{ github.sha }})"
+        subject="$(git log -1 --format=%B ${{ github.sha }})
         if [[ $subject == *"[skip-ci]"* ]]; then
           echo "Skip a release because the commit message contain [skip-ci]"
           exit 0
