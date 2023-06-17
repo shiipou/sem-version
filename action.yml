@@ -129,6 +129,7 @@ runs:
         declare -A CHANGELOG
         while IFS= read -r commit; do
           changelog_prefix=""
+          commit_prefix=""
           subject="$(git log -1 --format=%s $commit | head -n1)"
           if [ "${{ inputs.CASE_SENSITIVE }}" == 'false' ]; then
             subject=${subject,,}
