@@ -137,30 +137,33 @@ runs:
           [ $ACTIONS_STEP_DEBUG ] && echo "subject=$subject"
 
           # Extract the commit type
-          commit_prefix="${subject%%[(:]*}"
           [ $ACTIONS_STEP_DEBUG ] && echo "commit_prefix=$commit_prefix"
 
           # Check if commit type is breaking changes
           if [ "$level" -lt "3" ] && [[ $commit_prefix =~ $LEVEL_3 ]]; then
             correct="true"
             level=3
+            commit_prefix="${subject%%[(:]*}"
 
             [ $ACTIONS_STEP_DEBUG ] && echo "level=$level"
           # Check if prefix is in the array of level 2 prefix
           elif [ "$level" -lt "2" ] && [[ $commit_prefix =~ $LEVEL_2 ]]; then
             correct="true"
             level=2
+            commit_prefix="${subject%%[(:]*}"
 
             [ $ACTIONS_STEP_DEBUG ] && echo "level=$level"
           # Check if prefix is in the array of level 1 prefix
           elif [ "$level" -lt "1" ] && [[ $commit_prefix =~ $LEVEL_1 ]]; then
             correct="true"
             level=1
+            commit_prefix="${subject%%[(:]*}"
 
             [ $ACTIONS_STEP_DEBUG ] && echo "level=$level"
           # Check if prefix is in the array of level 0 prefix
           elif [[ $commit_prefix =~ $LEVEL_0 ]]; then
             correct="true"
+            commit_prefix="other"
 
             [ $ACTIONS_STEP_DEBUG ] && echo "level=$level"
           fi
