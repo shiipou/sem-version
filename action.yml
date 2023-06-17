@@ -178,7 +178,9 @@ runs:
             changelog_prefix=":hammer: "
           fi
 
-          CHANGELOG["$commit_prefix"]+="- ${changelog_prefix}$subject ($commit)\n"
+          if [ -n "$commit_prefix" ]; then
+            CHANGELOG["$commit_prefix"]+="- ${changelog_prefix}$subject ($commit)\n"
+          fi
           echo "$subject"
         done <<< "$commit_list"
 
