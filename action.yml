@@ -137,7 +137,7 @@ runs:
           [ $ACTIONS_STEP_DEBUG ] && echo "subject=$subject"
 
           # Extract the commit type
-          commit_prefix="${subject%%[(: ]*}"
+          commit_prefix="${subject%%[(:]*}"
           [ $ACTIONS_STEP_DEBUG ] && echo "commit_prefix=$commit_prefix"
 
           # Check if commit type is breaking changes
