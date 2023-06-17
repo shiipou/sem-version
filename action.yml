@@ -176,8 +176,10 @@ runs:
             changelog_prefix=":hammer: "
           fi
 
-          if [[ "$level" != "0" ]]; then
+          if [[ $commit_prefix =~ $LEVEL_1 || $commit_prefix =~ $LEVEL_2 || $commit_prefix =~ $LEVEL_3 ]]; then
             CHANGELOG["$commit_prefix"]+="- ${changelog_prefix}$subject ($commit)\n"
+          else
+            CHANGELOG["other"]+="- ${changelog_prefix}$subject ($commit)\n"
           fi
           echo "$subject"
         done <<< "$commit_list"
