@@ -134,7 +134,7 @@ runs:
           if [ "${{ inputs.CASE_SENSITIVE }}" == 'false' ]; then
             subject=${subject,,}
           fi
-          
+
           [ $ACTIONS_STEP_DEBUG ] && echo "subject=$subject"
 
           # Extract the commit type
@@ -216,6 +216,7 @@ runs:
           next_version="${major_version}.${minor_version}.${patch_version}"
           if [[ "$last_version" != "v${major_version}.${minor_version}.${patch_version}" ]]; then
             MUST_RELEASE=true
+            echo 'IS_PRE_RELEASE=false' >> $GITHUB_OUTPUT
           fi
           echo 'Find a release branch'
 
@@ -242,7 +243,7 @@ runs:
           body+="${CHANGELOG[$prefix]}\n"
         done
         body+="\n\n---\n\n**Full Changelog:** [${last_version}...${next_version}](${{ github.server_url }}/${{ github.repository }}/compare/${last_version}..v${next_version})\n"
-        
+
         # Publish changelog as action output
         EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
         echo "CHANGELOG<<$EOF" >> "$GITHUB_OUTPUT"
@@ -254,6 +255,7 @@ runs:
             echo 'WILL_RELEASE=true' >> $GITHUB_OUTPUT
             echo "Will release next version: ${next_version}"
         else
+            echo 'WILL_RELEASE=false' >> $GITHUB_OUTPUT
             echo 'No new release needed for theses commits'
         fi
         echo "VERSION=${next_version}" >> $GITHUB_OUTPUT
