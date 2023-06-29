@@ -25,10 +25,9 @@ jobs:
       id: get-version
       uses: shiipou/sem-version@stable
       with:
-        RELEASE_BRANCHES_REGEX: '^(stable)$'
-        PRERELEASE_BRANCHES_REGEX: '^(beta|rc)$'
-        ALLOW_FAILURE: false
-        DEBUG: true
+        release-branches: '^(stable)$'
+        prerelease-branches: '^(beta|rc)$'
+        allow-failure: false
 
     - name: Release
       env:
@@ -36,10 +35,10 @@ jobs:
       if: steps.get-version.outputs.WILL_RELEASE == 'true'
       uses: actions/create-release@v1
       with:
-        tag_name: v${{ steps.get-version.outputs.VERSION }}
-        release_name: v${{ steps.get-version.outputs.VERSION }}
+        tag_name: v${{ steps.get-version.outputs.version }}
+        release_name: v${{ steps.get-version.outputs.version }}
         body: |
-          ${{ steps.get-version.outputs.CHANGELOG }}
+          ${{ steps.get-version.outputs.changelogs }}
         draft: false
-        prerelease: ${{ steps.get-version.outputs.IS_PRE_RELEASE }}
+        prerelease: ${{ steps.get-version.outputs.is-prerelease == 'true' }}
 ```
