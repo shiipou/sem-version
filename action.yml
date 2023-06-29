@@ -85,9 +85,6 @@ runs:
           fi
         }
 
-        if $ACTIONS_STEP_DEBUG ; then set_debug_mode='set -xe'; fi
-        $set_debug_mode
-
         CI_COMMIT_BRANCH="${GITHUB_REF#refs/heads/}"
         echo "Current branch: $CI_COMMIT_BRANCH"
 
@@ -121,7 +118,6 @@ runs:
           diff_path="${last_version}.."
         fi
         commit_list="$(git rev-list --oneline $diff_path --format=%h --no-commit-header)"
-        [ $ACTIONS_STEP_DEBUG ] && echo "${commit_list}"
 
         correct="false"
         level=0
@@ -139,7 +135,6 @@ runs:
 
           # Extract the commit type
           commit_prefix="${subject%%[(:]*}"
-          [ $ACTIONS_STEP_DEBUG ] && echo "commit_prefix=$commit_prefix"
 
           # Check if commit type is breaking changes
           if [ "$level" -lt "3" ] && [[ $commit_prefix =~ $LEVEL_3 ]]; then
@@ -163,8 +158,6 @@ runs:
           elif [[ $commit_prefix =~ $LEVEL_0 ]]; then
             correct="true"
             commit_prefix="other"
-
-            [ $ACTIONS_STEP_DEBUG ] && echo "level=$level"
           fi
 
 
