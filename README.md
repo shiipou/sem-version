@@ -32,7 +32,7 @@ jobs:
     - name: Release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      if: steps.get-version.outputs.WILL_RELEASE == 'true'
+      if: steps.get-version.outputs.will-release == 'true'
       uses: actions/create-release@v1
       with:
         tag_name: v${{ steps.get-version.outputs.version }}
