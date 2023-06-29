@@ -99,6 +99,13 @@ runs:
           git fetch --unshallow >> /dev/null
         fi
 
+        # Skip a release if current commit contain [skip-ci]
+        subject="$(git log -1 --format=%B ${{ github.sha }})"
+        if [[ $subject == *"[skip-ci]"* ]]; then
+          echo "Skip a release because the commit message contain [skip-ci]"
+          exit 0
+        fi
+
         # find last tag from the current commit sha
         _last_tag_info=$(git describe --tags ${{ github.sha }} 2>/dev/null || true)
 
@@ -122,15 +129,16 @@ runs:
         declare -A CHANGELOG
         while IFS= read -r commit; do
           changelog_prefix=""
+          commit_prefix=""
           subject="$(git log -1 --format=%s $commit | head -n1)"
           if [ "${{ inputs.CASE_SENSITIVE }}" == 'false' ]; then
             subject=${subject,,}
           fi
-          
+
           [ $ACTIONS_STEP_DEBUG ] && echo "subject=$subject"
 
           # Extract the commit type
-          commit_prefix="${subject%%[(: ]*}"
+          commit_prefix="${subject%%[(:]*}"
           [ $ACTIONS_STEP_DEBUG ] && echo "commit_prefix=$commit_prefix"
 
           # Check if commit type is breaking changes
@@ -154,6 +162,7 @@ runs:
           # Check if prefix is in the array of level 0 prefix
           elif [[ $commit_prefix =~ $LEVEL_0 ]]; then
             correct="true"
+            commit_prefix="other"
 
             [ $ACTIONS_STEP_DEBUG ] && echo "level=$level"
           fi
@@ -167,7 +176,11 @@ runs:
             changelog_prefix=":hammer: "
           fi
 
-          CHANGELOG["$commit_prefix"]+="- ${changelog_prefix}$subject ($commit)\n"
+          if [[ $commit_prefix =~ $LEVEL_1 || $commit_prefix =~ $LEVEL_2 || $commit_prefix =~ $LEVEL_3 ]]; then
+            CHANGELOG["$commit_prefix"]+="- ${changelog_prefix}$subject ($commit)\n"
+          else
+            CHANGELOG["other"]+="- ${changelog_prefix}$subject ($commit)\n"
+          fi
           echo "$subject"
         done <<< "$commit_list"
 
@@ -208,6 +221,7 @@ runs:
           next_version="${major_version}.${minor_version}.${patch_version}"
           if [[ "$last_version" != "v${major_version}.${minor_version}.${patch_version}" ]]; then
             MUST_RELEASE=true
+            echo 'IS_PRE_RELEASE=false' >> $GITHUB_OUTPUT
           fi
           echo 'Find a release branch'
 
@@ -246,6 +260,7 @@ runs:
             echo 'will-release=true' >> $GITHUB_OUTPUT
             echo "Will release next version: ${next_version}"
         else
+            echo 'WILL_RELEASE=false' >> $GITHUB_OUTPUT
             echo 'No new release needed for theses commits'
         fi
         echo "version=${next_version}" >> $GITHUB_OUTPUT
