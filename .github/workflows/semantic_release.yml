@@ -19,9 +19,8 @@ jobs:
       id: get-version
       uses: ./
       with:
-        RELEASE_BRANCHES_REGEX: '^(stable)$'
-        ALLOW_FAILURE: false
-        DEBUG: all
+        release-branches: '^(stable)$'
+        allow-failure: false
 
     - name: Release
       env:
@@ -29,9 +28,9 @@ jobs:
       if: steps.get-version.outputs.WILL_RELEASE == 'true'
       uses: actions/create-release@v1
       with:
-        tag_name: v${{ steps.get-version.outputs.VERSION }}
-        release_name: v${{ steps.get-version.outputs.VERSION }}
+        tag_name: v${{ steps.get-version.outputs.version }}
+        release_name: v${{ steps.get-version.outputs.version }}
         body: |
-          ${{ steps.get-version.outputs.CHANGELOG }}
+          ${{ steps.get-version.outputs.changelogs }}
         draft: false
-        prerelease: ${{ steps.get-version.outputs.IS_PRE_RELEASE }}
+        prerelease: ${{ steps.get-version.outputs.is-prerelease == 'true' }}
