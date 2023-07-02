@@ -131,8 +131,6 @@ runs:
             subject=${subject,,}
           fi
 
-          [ $ACTIONS_STEP_DEBUG ] && echo "subject=$subject"
-
           # Extract the commit type
           commit_prefix="${subject%%[(:]*}"
 
@@ -141,19 +139,16 @@ runs:
             correct="true"
             level=3
 
-            [ $ACTIONS_STEP_DEBUG ] && echo "level=$level"
           # Check if prefix is in the array of level 2 prefix
           elif [ "$level" -lt "2" ] && [[ $commit_prefix =~ $LEVEL_2 ]]; then
             correct="true"
             level=2
 
-            [ $ACTIONS_STEP_DEBUG ] && echo "level=$level"
           # Check if prefix is in the array of level 1 prefix
           elif [ "$level" -lt "1" ] && [[ $commit_prefix =~ $LEVEL_1 ]]; then
             correct="true"
             level=1
 
-            [ $ACTIONS_STEP_DEBUG ] && echo "level=$level"
           # Check if prefix is in the array of level 0 prefix
           elif [[ $commit_prefix =~ $LEVEL_0 ]]; then
             correct="true"
@@ -168,8 +163,9 @@ runs:
           elif [[ $commit_prefix =~ $LEVEL_1 ]]; then
             changelog_prefix=":hammer: "
           fi
-
+          
           if [[ $commit_prefix =~ $LEVEL_1 || $commit_prefix =~ $LEVEL_2 || $commit_prefix =~ $LEVEL_3 ]]; then
+            commit_prefix="${commit_prefix%%\!*}"
             CHANGELOG["$commit_prefix"]+="- ${changelog_prefix}$subject ($commit)\n"
           else
             CHANGELOG["other"]+="- ${changelog_prefix}$subject ($commit)\n"
